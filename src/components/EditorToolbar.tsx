@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eraser, Wand2, Download, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Eraser, Wand2, Sliders, Download, ArrowLeft, RotateCcw } from 'lucide-react';
 import type { EditorMode } from '../types';
 
 interface EditorToolbarProps {
@@ -45,12 +45,12 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </button>
       </div>
 
-      {/* Feature Selector Tabs (The 2 Non-Negotiable Features) */}
+      {/* Feature Selector Tabs */}
       <div className="flex items-center bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/90 w-full sm:w-auto justify-center">
         <button
           onClick={() => onModeChange('inpaint')}
           disabled={isProcessing}
-          className={`tactile-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+          className={`tactile-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
             mode === 'inpaint'
               ? 'bg-zinc-850 text-emerald-400 shadow-md border border-emerald-500/20'
               : 'text-zinc-400 hover:text-zinc-200'
@@ -63,7 +63,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <button
           onClick={() => onModeChange('style')}
           disabled={isProcessing}
-          className={`tactile-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+          className={`tactile-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
             mode === 'style'
               ? 'bg-zinc-850 text-emerald-400 shadow-md border border-emerald-500/20'
               : 'text-zinc-400 hover:text-zinc-200'
@@ -71,6 +71,19 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         >
           <Wand2 className="w-3.5 h-3.5 text-emerald-400" />
           <span>Style Transfer</span>
+        </button>
+
+        <button
+          onClick={() => onModeChange('adjust')}
+          disabled={isProcessing}
+          className={`tactile-btn flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+            mode === 'adjust'
+              ? 'bg-zinc-850 text-emerald-400 shadow-md border border-emerald-500/20'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Adjustments</span>
         </button>
       </div>
 

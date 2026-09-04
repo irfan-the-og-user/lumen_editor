@@ -6,13 +6,16 @@ import { CanvasWorkspace } from './components/CanvasWorkspace';
 import { EditorToolbar } from './components/EditorToolbar';
 import { InpaintControls } from './components/InpaintControls';
 import { StyleControls } from './components/StyleControls';
+import { AdjustControls } from './components/AdjustControls';
 import { ComparisonSlider } from './components/ComparisonSlider';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { Toast, type ToastMessage } from './components/Toast';
 import { executeInpainting } from './utils/inpaintingEngine';
 import { executeStyleTransfer } from './utils/styleEngine';
-import type { EditorMode, EditHistoryItem, InferenceProgress } from './types';
+import type { EditorMode, EditHistoryItem, InferenceProgress, AdjustmentSettings } from './types';
+import { DEFAULT_ADJUSTMENTS } from './types';
 import type { Stroke } from './utils/canvasUtils';
+import { loadImage, renderImageWithAdjustments, createCanvasBlobUrl } from './utils/canvasUtils';
 
 export function App() {
   const [activeImage, setActiveImage] = useState<string | null>(null);
@@ -32,6 +35,10 @@ export function App() {
   const [selectedStyleId, setSelectedStyleId] = useState<string>('cyberpunk');
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [hasAppliedStyle, setHasAppliedStyle] = useState<boolean>(false);
+
+  // Viewport Adjustment State
+  const [adjustments, setAdjustments] = useState<AdjustmentSettings>(DEFAULT_ADJUSTMENTS);
+  const [adjustLatencyMs, setAdjustLatencyMs] = useState<number | null>(null);
 
   // Modals and Toasts
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
@@ -60,6 +67,7 @@ export function App() {
       setLastLatencyMs(null);
       setHasAppliedStyle(false);
       setShowComparison(false);
+      setAdjustments(DEFAULT_ADJUSTMENTS);
       addToast('success', 'Image loaded to canvas');
     } else {
       const url = URL.createObjectURL(fileOrUrl);
@@ -71,6 +79,7 @@ export function App() {
       setLastLatencyMs(null);
       setHasAppliedStyle(false);
       setShowComparison(false);
+      setAdjustments(DEFAULT_ADJUSTMENTS);
       addToast('success', 'Image uploaded successfully');
     }
   };
@@ -85,6 +94,7 @@ export function App() {
     setLastLatencyMs(null);
     setHasAppliedStyle(false);
     setShowComparison(false);
+    setAdjustments(DEFAULT_ADJUSTMENTS);
     addToast('info', 'Canvas reset');
   };
 
@@ -96,19 +106,77 @@ export function App() {
       setStrokes([]);
       setErrorMessage(null);
       setShowComparison(false);
+      setAdjustments(DEFAULT_ADJUSTMENTS);
       addToast('info', `Reverted: ${previousState.action}`);
     }
   };
 
-  const handleExport = () => {
+  const handleAdjustmentsChange = (newAdjustments: AdjustmentSettings) => {
+    const start = performance.now();
+    setAdjustments(newAdjustments);
+    const duration = Math.round(performance.now() - start);
+    setAdjustLatencyMs(duration);
+  };
+
+  const handleResetAdjustments = () => {
+    setAdjustments(DEFAULT_ADJUSTMENTS);
+    addToast('info', 'Sliders reset');
+  };
+
+  const handleCommitAdjustments = async () => {
     if (!activeImage) return;
-    const a = document.createElement('a');
-    a.href = activeImage;
-    a.download = `lumen-edit-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    addToast('success', 'HD Image exported to downloads');
+    try {
+      setIsProcessing(true);
+      const img = await loadImage(activeImage);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        renderImageWithAdjustments(ctx, img, adjustments, canvas.width, canvas.height);
+        const blobUrl = await createCanvasBlobUrl(canvas);
+        const historyItem: EditHistoryItem = {
+          id: `hist-${Date.now()}`,
+          timestamp: Date.now(),
+          action: 'Viewport Adjustment',
+          imageBlobUrl: activeImage
+        };
+        setHistory((prev) => [...prev, historyItem]);
+        setActiveImage(blobUrl);
+        setAdjustments(DEFAULT_ADJUSTMENTS);
+        addToast('success', 'Viewport adjustment state saved');
+      }
+    } catch (err) {
+      console.error('Error committing adjustments:', err);
+      addToast('error', 'Failed to commit adjustments');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!activeImage) return;
+    try {
+      const img = await loadImage(activeImage);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        renderImageWithAdjustments(ctx, img, adjustments, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png', 0.95);
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `lumen-export-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        addToast('success', 'HD Image exported to downloads');
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      addToast('error', 'Export failed');
+    }
   };
 
   // Feature 1: Object Removal Action
@@ -245,6 +313,7 @@ export function App() {
                 onBrushSizeChange={setBrushSize}
                 isDrawingEnabled={mode === 'inpaint'}
                 isProcessing={isProcessing}
+                adjustments={adjustments}
               />
             )}
 
@@ -276,6 +345,18 @@ export function App() {
                 hasStyledImage={hasAppliedStyle}
                 showComparison={showComparison}
                 onToggleComparison={setShowComparison}
+              />
+            )}
+
+            {/* Feature 3 Controls: Viewport Canvas Adjustments */}
+            {mode === 'adjust' && (
+              <AdjustControls
+                adjustments={adjustments}
+                onAdjustmentsChange={handleAdjustmentsChange}
+                onCommitAdjustments={handleCommitAdjustments}
+                onResetAdjustments={handleResetAdjustments}
+                isProcessing={isProcessing}
+                renderLatencyMs={adjustLatencyMs}
               />
             )}
           </div>

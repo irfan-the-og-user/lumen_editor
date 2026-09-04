@@ -2,6 +2,8 @@
  * Canvas utility functions for high-DPI rendering, mask extraction, and image transformations.
  */
 
+import type { AdjustmentSettings } from '../types';
+
 export interface Point {
   x: number;
   y: number;
@@ -118,4 +120,56 @@ export const dataUrlToBlob = (dataUrl: string): Blob => {
     u8arr[n] = bstr.charCodeAt(n);
   }
   return new Blob([u8arr], { type: mime });
+};
+
+/**
+  * Builds a 2D Canvas filter string from adjustment slider settings.
+  */
+export const buildCanvasFilterString = (settings: AdjustmentSettings): string => {
+  const { brightness, contrast, saturation, warmth, exposure, sepia } = settings;
+  const totalBrightness = 100 + brightness + exposure * 0.8;
+  const totalContrast = 100 + contrast + exposure * 0.2;
+  const totalSaturation = 100 + saturation;
+  const hueRotate = warmth * 0.25;
+
+  const filters: string[] = [];
+  if (totalBrightness !== 100) filters.push(`brightness(${Math.max(0, totalBrightness)}%)`);
+  if (totalContrast !== 100) filters.push(`contrast(${Math.max(0, totalContrast)}%)`);
+  if (totalSaturation !== 100) filters.push(`saturate(${Math.max(0, totalSaturation)}%)`);
+  if (sepia > 0) filters.push(`sepia(${sepia}%)`);
+  if (hueRotate !== 0) filters.push(`hue-rotate(${hueRotate}deg)`);
+
+  return filters.length > 0 ? filters.join(' ') : 'none';
+};
+
+/**
+ * Creates a memory-cached Object URL blob from a canvas element.
+ */
+export const createCanvasBlobUrl = (canvas: HTMLCanvasElement): Promise<string> => {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(URL.createObjectURL(blob));
+      } else {
+        resolve(canvas.toDataURL('image/png'));
+      }
+    }, 'image/png');
+  });
+};
+
+/**
+ * Renders an HTMLImageElement onto a target canvas with adjustment filters applied.
+ */
+export const renderImageWithAdjustments = (
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  settings: AdjustmentSettings,
+  width: number,
+  height: number
+) => {
+  ctx.save();
+  ctx.clearRect(0, 0, width, height);
+  ctx.filter = buildCanvasFilterString(settings);
+  ctx.drawImage(img, 0, 0, width, height);
+  ctx.restore();
 };
