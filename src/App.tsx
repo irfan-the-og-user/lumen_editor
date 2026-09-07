@@ -8,6 +8,7 @@ import { InpaintControls } from './components/InpaintControls';
 import { StyleControls } from './components/StyleControls';
 import { ComparisonSlider } from './components/ComparisonSlider';
 import { ArchitectureModal } from './components/ArchitectureModal';
+import { ProjectDashboard } from './components/ProjectDashboard';
 import { Toast, type ToastMessage } from './components/Toast';
 import { executeInpainting } from './utils/inpaintingEngine';
 import { executeStyleTransfer } from './utils/styleEngine';
@@ -32,6 +33,9 @@ export function App() {
   const [selectedStyleId, setSelectedStyleId] = useState<string>('cyberpunk');
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [hasAppliedStyle, setHasAppliedStyle] = useState<boolean>(false);
+
+  // View Mode State
+  const [viewMode, setViewMode] = useState<'editor' | 'projects'>('editor');
 
   // Modals and Toasts
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
@@ -204,10 +208,14 @@ export function App() {
         onReset={handleReset}
         hasActiveImage={!!activeImage}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
-        {!activeImage ? (
+        {viewMode === 'projects' ? (
+          <ProjectDashboard addToast={addToast} />
+        ) : !activeImage ? (
           <>
             <Hero />
             <section className="py-2 sm:py-4">

@@ -5,9 +5,17 @@ interface NavbarProps {
   onReset?: () => void;
   hasActiveImage?: boolean;
   onOpenArchitecture: () => void;
+  viewMode?: 'editor' | 'projects';
+  onViewModeChange?: (mode: 'editor' | 'projects') => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenArchitecture }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onReset,
+  hasActiveImage,
+  onOpenArchitecture,
+  viewMode = 'editor',
+  onViewModeChange,
+}) => {
   return (
     <header className="w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -30,8 +38,33 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
           </div>
         </div>
 
-        {/* Telemetry & Architecture Badges */}
+        {/* View mode switcher & Telemetry Badges */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {onViewModeChange && (
+            <div className="flex items-center p-0.5 rounded-xl bg-zinc-900 border border-zinc-800">
+              <button
+                onClick={() => onViewModeChange('editor')}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  viewMode === 'editor'
+                    ? 'bg-emerald-500 text-zinc-950 font-bold'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Editor
+              </button>
+              <button
+                onClick={() => onViewModeChange('projects')}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  viewMode === 'projects'
+                    ? 'bg-emerald-500 text-zinc-950 font-bold'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Projects
+              </button>
+            </div>
+          )}
+
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 text-[11px] font-mono text-zinc-400">
             <Cpu className="w-3.5 h-3.5 text-emerald-400" />
             <span>&lt;250KB Client</span>
@@ -45,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
             <span className="hidden sm:inline">Architecture</span>
           </button>
 
-          {hasActiveImage && onReset && (
+          {hasActiveImage && onReset && viewMode === 'editor' && (
             <button
               onClick={onReset}
               className="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 text-xs text-zinc-200 font-medium cursor-pointer"
