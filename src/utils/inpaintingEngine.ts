@@ -207,8 +207,9 @@ export const executeInpainting = async (
     }
   }
 
-  // Run client-side zero-latency neural patch diffusion
-  const resultDataUrl = await runClientSideInpainting(imageSrc, strokes, onProgress);
+  // Run client-side zero-latency neural patch diffusion off-thread via worker
+  const { runInpaintingOffthread } = await import('./workerManager');
+  const resultDataUrl = await runInpaintingOffthread(imageSrc, strokes, onProgress);
   return {
     resultDataUrl,
     engineUsed: 'edge-client',
