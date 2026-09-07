@@ -30,3 +30,35 @@ export interface EditHistoryItem {
   action: string;
   imageBlobUrl: string;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: number;
+}
+
+export type PendingAction = 'export' | 'cloud_ai' | null;
+
+export interface SavedHistoryItem {
+  id: string;
+  timestamp: number;
+  action: string;
+  imageBlob: Blob;
+}
+
+export interface SavedSessionData {
+  activeImageBlob: Blob;
+  initialBaseImageBlob: Blob | null;
+  mode: EditorMode;
+  strokes: any[];
+  brushSize: number;
+  history: SavedHistoryItem[];
+  selectedStyleId: string;
+  hasAppliedStyle: boolean;
+  showComparison: boolean;
+  lastLatencyMs: number | null;
+  lastEngineUsed: 'huggingface' | 'edge-client' | null;
+  updatedAt: number;
+}
+
