@@ -1,4 +1,4 @@
-export type EditorMode = 'idle' | 'inpaint' | 'style';
+export type EditorMode = 'idle' | 'inpaint' | 'style' | 'adjust';
 
 export interface StylePreset {
   id: string;
@@ -24,9 +24,18 @@ export interface InferenceProgress {
   subtext: string;
 }
 
+export interface ImageAdjustments {
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  filterIntensity: number;
+}
+
 export interface EditHistoryItem {
   id: string;
   timestamp: number;
   action: string;
   imageBlobUrl: string;
+  adjustments?: ImageAdjustments;
+  styleId?: string;
 }

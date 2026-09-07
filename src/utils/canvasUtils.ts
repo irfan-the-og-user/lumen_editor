@@ -1,3 +1,5 @@
+import type { ImageAdjustments } from '../types';
+
 /**
  * Canvas utility functions for high-DPI rendering, mask extraction, and image transformations.
  */
@@ -118,4 +120,52 @@ export const dataUrlToBlob = (dataUrl: string): Blob => {
     u8arr[n] = bstr.charCodeAt(n);
   }
   return new Blob([u8arr], { type: mime });
+};
+
+/**
+ * Converts a base64 Data URL to an Object URL in local browser memory.
+ */
+export const dataUrlToObjectUrl = (dataUrl: string): string => {
+  const blob = dataUrlToBlob(dataUrl);
+  return URL.createObjectURL(blob);
+};
+
+/**
+ * Creates an Object URL from an HTMLCanvasElement asynchronously.
+ */
+export const canvasToObjectUrl = (canvas: HTMLCanvasElement): Promise<string> => {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(URL.createObjectURL(blob));
+      } else {
+        resolve(dataUrlToObjectUrl(canvas.toDataURL('image/png')));
+      }
+    }, 'image/png');
+  });
+};
+
+/**
+ * Renders an image with CSS adjustments applied onto a native-resolution canvas,
+ * returning an Object URL for full-resolution local export or preview caching.
+ */
+export const renderAdjustedImage = async (
+  imageSrc: string,
+  adjustments: ImageAdjustments
+): Promise<string> => {
+  const img = await loadImage(imageSrc);
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to create canvas 2D context');
+
+  ctx.filter = `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%) saturate(${adjustments.saturation}%)`;
+  ctx.drawImage(img, 0, 0, width, height);
+  ctx.filter = 'none';
+
+  return canvasToObjectUrl(canvas);
 };
