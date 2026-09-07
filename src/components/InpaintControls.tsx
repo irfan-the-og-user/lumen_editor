@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Eraser, Sparkles, AlertCircle, Key, Cpu, Cloud, CheckCircle2 } from 'lucide-react';
+import { getProgressClass } from '../utils/dynamicStyleManager';
 import type { InferenceProgress } from '../types';
 
 interface InpaintControlsProps {
@@ -98,8 +99,7 @@ export const InpaintControls: React.FC<InpaintControlsProps> = ({
           {/* Progress Bar Track */}
           <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
             <div
-              className="h-full bg-gradient-to-r from-rose-500 to-emerald-400 transition-all duration-300 ease-out"
-              style={{ width: `${progress.percentage}%` }}
+              className={`h-full bg-gradient-to-r from-rose-500 to-emerald-400 transition-all duration-300 ease-out ${getProgressClass(progress.percentage)}`}
             />
           </div>
 

@@ -16,7 +16,7 @@
   body {
     background-color: #09090b;
     color: #f4f4f5;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100dvh;
     margin: 0;
     padding: 0;
@@ -24,6 +24,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 
   #root {
@@ -77,3 +81,30 @@
 .tactile-btn:active {
   transform: scale(0.97);
 }
+
+/* Background checkered grid for canvas workspace */
+.bg-checkered-pattern {
+  background-image: radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0);
+  background-size: 16px 16px;
+}
+
+/* Style Preset Swatches */
+.preset-bg-cyberpunk {
+  background: linear-gradient(135deg, #06b6d4 0%, #d946ef 100%);
+}
+.preset-bg-monochrome {
+  background: linear-gradient(135deg, #18181b 0%, #71717a 50%, #f4f4f5 100%);
+}
+.preset-bg-oil-painting {
+  background: linear-gradient(135deg, #78350f 0%, #d97706 50%, #fde68a 100%);
+}
+.preset-bg-anime-ghibli {
+  background: linear-gradient(135deg, #059669 0%, #34d399 50%, #67e8f9 100%);
+}
+.preset-bg-vintage-film {
+  background: linear-gradient(135deg, #c2410c 0%, #fb923c 50%, #fef08a 100%);
+}
+.preset-bg-blueprint {
+  background: linear-gradient(135deg, #082f49 0%, #0369a1 50%, #38bdf8 100%);
+}
+

@@ -9,6 +9,7 @@ import {
   Sparkles 
 } from 'lucide-react';
 import { loadImage, calculateFitDimensions } from '../utils/canvasUtils';
+import { getCanvasSizeClass, getZoomScaleClass, getCursorPosClass, getCursorSizeClass } from '../utils/dynamicStyleManager';
 import type { Point, Stroke } from '../utils/canvasUtils';
 
 interface CanvasWorkspaceProps {
@@ -325,28 +326,15 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
         className="relative w-full max-w-3xl flex items-center justify-center p-3 sm:p-4 rounded-2xl bg-zinc-950 border border-zinc-850 overflow-hidden shadow-2xl min-h-[300px]"
       >
         {/* Subtle checkered transparent grid background */}
-        <div 
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)`,
-            backgroundSize: '16px 16px'
-          }}
-        />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-checkered-pattern" />
 
         <div
-          className="relative transition-transform duration-100 ease-out select-none"
-          style={{
-            width: displayDimensions.width,
-            height: displayDimensions.height,
-            transform: `scale(${zoomLevel})`,
-            touchAction: isDrawingEnabled ? 'none' : 'auto'
-          }}
+          className={`relative transition-transform duration-100 ease-out select-none ${getCanvasSizeClass(displayDimensions.width, displayDimensions.height)} ${getZoomScaleClass(zoomLevel)} ${isDrawingEnabled ? 'touch-none' : 'touch-auto'}`}
         >
           {/* Base Layer: Native Image Canvas */}
           <canvas
             ref={imageCanvasRef}
             className="absolute inset-0 w-full h-full rounded-xl shadow-md pointer-events-none"
-            style={{ width: displayDimensions.width, height: displayDimensions.height }}
           />
 
           {/* Top Layer: Interactive Mask Overlay Canvas */}
@@ -365,19 +353,12 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
             className={`absolute inset-0 w-full h-full rounded-xl ${
               isDrawingEnabled ? 'cursor-crosshair' : 'cursor-default'
             }`}
-            style={{ width: displayDimensions.width, height: displayDimensions.height }}
           />
 
           {/* Dynamic Brush Size Hover Ring Preview */}
           {isDrawingEnabled && cursorPos && !isProcessing && (
             <div
-              className="absolute pointer-events-none rounded-full border border-rose-400/80 bg-rose-500/20 -translate-x-1/2 -translate-y-1/2 transition-transform duration-75"
-              style={{
-                left: cursorPos.x,
-                top: cursorPos.y,
-                width: brushSize,
-                height: brushSize
-              }}
+              className={`absolute pointer-events-none rounded-full border border-rose-400/80 bg-rose-500/20 -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 ${getCursorPosClass(cursorPos.x, cursorPos.y)} ${getCursorSizeClass(brushSize)}`}
             />
           )}
         </div>

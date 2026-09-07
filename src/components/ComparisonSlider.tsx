@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Eye, SplitSquareHorizontal } from 'lucide-react';
+import { getSliderClipClass, getSliderLeftClass } from '../utils/dynamicStyleManager';
 
 interface ComparisonSliderProps {
   originalImage: string;
@@ -84,17 +85,12 @@ export const ComparisonSlider: React.FC<ComparisonSliderProps> = ({
         {/* Layer 2: Original / Before Image (Clipped by slider position) */}
         {!isHoldingOriginal && (
           <div
-            className="absolute inset-0 overflow-hidden pointer-events-none"
-            style={{ width: `${sliderPos}%` }}
+            className={`absolute inset-0 overflow-hidden pointer-events-none ${getSliderClipClass(sliderPos)}`}
           >
             <img
               src={originalImage}
               alt="Original Before"
-              className="absolute top-0 left-0 max-w-none h-full w-[100cqi] object-contain"
-              style={{
-                width: containerRef.current ? `${containerRef.current.clientWidth}px` : '100%',
-                height: containerRef.current ? `${containerRef.current.clientHeight}px` : '100%'
-              }}
+              className="absolute top-0 left-0 w-full h-full object-contain"
             />
           </div>
         )}
@@ -102,8 +98,7 @@ export const ComparisonSlider: React.FC<ComparisonSliderProps> = ({
         {/* Slider Divider Line & Thumb */}
         {!isHoldingOriginal && (
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-white/90 shadow-[0_0_12px_rgba(0,0,0,0.8)] pointer-events-none"
-            style={{ left: `${sliderPos}%` }}
+            className={`absolute top-0 bottom-0 w-0.5 bg-white/90 shadow-[0_0_12px_rgba(0,0,0,0.8)] pointer-events-none ${getSliderLeftClass(sliderPos)}`}
           >
             <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-zinc-900/90 border-2 border-white shadow-xl flex items-center justify-center text-zinc-100 backdrop-blur-md">
               <SplitSquareHorizontal className="w-4 h-4 text-emerald-400" />
