@@ -1,13 +1,23 @@
 import React from 'react';
-import { Sparkles, Cpu, Layers, BookOpen } from 'lucide-react';
+import { Sparkles, Cpu, Layers, BookOpen, Wifi, WifiOff, Download } from 'lucide-react';
 
 interface NavbarProps {
   onReset?: () => void;
   hasActiveImage?: boolean;
   onOpenArchitecture: () => void;
+  isOnline: boolean;
+  canInstall?: boolean;
+  onInstall?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenArchitecture }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onReset,
+  hasActiveImage,
+  onOpenArchitecture,
+  isOnline,
+  canInstall,
+  onInstall
+}) => {
   return (
     <header className="w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -30,8 +40,40 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
           </div>
         </div>
 
-        {/* Telemetry & Architecture Badges */}
+        {/* Telemetry, Network Status & Architecture Badges */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Real-time Network Status Indicator */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium transition-all ${
+              isOnline
+                ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-400'
+                : 'bg-amber-950/50 border border-amber-500/40 text-amber-400 animate-pulse'
+            }`}
+
+          >
+            {isOnline ? (
+              <>
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Online</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                <span>Offline Mode</span>
+              </>
+            )}
+          </div>
+
+          {canInstall && onInstall && (
+            <button
+              onClick={onInstall}
+              className="tactile-btn flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-[11px] font-mono text-emerald-300 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Install</span>
+            </button>
+          )}
+
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 text-[11px] font-mono text-zinc-400">
             <Cpu className="w-3.5 h-3.5 text-emerald-400" />
             <span>&lt;250KB Client</span>
@@ -55,7 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
             </button>
           )}
 
-          <div className="px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-medium">
+          <div className="hidden sm:block px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-medium">
             Inter IIT 14.0
           </div>
         </div>
@@ -63,3 +105,4 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
     </header>
   );
 };
+

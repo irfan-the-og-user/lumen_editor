@@ -173,8 +173,8 @@ export const executeInpainting = async (
     throw new Error('Please brush over the object you wish to remove first.');
   }
 
-  // If user provided HF API key or API endpoint is configured
-  if (hfApiKey && hfApiKey.trim().length > 5) {
+  // If user provided HF API key or API endpoint is configured and device is online
+  if (typeof navigator !== 'undefined' && navigator.onLine && hfApiKey && hfApiKey.trim().length > 5) {
     try {
       onProgress?.('Preparing neural request for Hugging Face SD-Inpainting...', 20);
       

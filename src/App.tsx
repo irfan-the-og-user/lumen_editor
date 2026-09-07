@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { UploadDropzone } from './components/UploadDropzone';
@@ -8,9 +8,13 @@ import { InpaintControls } from './components/InpaintControls';
 import { StyleControls } from './components/StyleControls';
 import { ComparisonSlider } from './components/ComparisonSlider';
 import { ArchitectureModal } from './components/ArchitectureModal';
+import { InstallPromptBanner } from './components/InstallPromptBanner';
 import { Toast, type ToastMessage } from './components/Toast';
 import { executeInpainting } from './utils/inpaintingEngine';
 import { executeStyleTransfer } from './utils/styleEngine';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
+import { usePwaInstall } from './hooks/usePwaInstall';
+import { loadCanvasSession, saveCanvasSession, clearCanvasSession } from './utils/indexedDB';
 import type { EditorMode, EditHistoryItem, InferenceProgress } from './types';
 import type { Stroke } from './utils/canvasUtils';
 
@@ -37,6 +41,12 @@ export function App() {
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // PWA & Network Hooks
+  const isOnline = useNetworkStatus();
+  const { canInstall, promptInstall } = usePwaInstall();
+  const prevOnlineRef = useRef<boolean>(isOnline);
+  const isInitialMountRef = useRef<boolean>(true);
+
   const addToast = (type: 'success' | 'error' | 'info', text: string) => {
     const newToast: ToastMessage = {
       id: `toast-${Date.now()}-${Math.random()}`,
@@ -49,6 +59,81 @@ export function App() {
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Restore canvas session from IndexedDB on startup
+  useEffect(() => {
+    let isMounted = true;
+    loadCanvasSession().then((savedSession) => {
+      if (isMounted && savedSession) {
+        if (savedSession.activeImage) setActiveImage(savedSession.activeImage);
+        if (savedSession.initialBaseImage) setInitialBaseImage(savedSession.initialBaseImage);
+        if (savedSession.mode) setMode(savedSession.mode);
+        if (savedSession.strokes) setStrokes(savedSession.strokes);
+        if (savedSession.brushSize) setBrushSize(savedSession.brushSize);
+        if (savedSession.history) setHistory(savedSession.history);
+        if (savedSession.selectedStyleId) setSelectedStyleId(savedSession.selectedStyleId);
+        if (savedSession.hasAppliedStyle !== undefined) setHasAppliedStyle(savedSession.hasAppliedStyle);
+        if (savedSession.showComparison !== undefined) setShowComparison(savedSession.showComparison);
+        if (savedSession.activeImage) {
+          addToast('info', 'Restored previous canvas session');
+        }
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Persist session changes to IndexedDB (debounced)
+  useEffect(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (activeImage) {
+        saveCanvasSession({
+          activeImage,
+          initialBaseImage,
+          mode,
+          strokes,
+          brushSize,
+          history,
+          selectedStyleId,
+          hasAppliedStyle,
+          showComparison,
+          updatedAt: Date.now()
+        });
+      } else {
+        clearCanvasSession();
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    activeImage,
+    initialBaseImage,
+    mode,
+    strokes,
+    brushSize,
+    history,
+    selectedStyleId,
+    hasAppliedStyle,
+    showComparison
+  ]);
+
+  // Real-time network status change notifications
+  useEffect(() => {
+    if (prevOnlineRef.current !== isOnline) {
+      if (isOnline) {
+        addToast('success', 'Back online. Network connectivity restored.');
+      } else {
+        addToast('info', 'Offline mode active. All operations running locally.');
+      }
+      prevOnlineRef.current = isOnline;
+    }
+  }, [isOnline]);
 
   const handleImageSelect = (fileOrUrl: File | string) => {
     if (typeof fileOrUrl === 'string') {
@@ -85,6 +170,7 @@ export function App() {
     setLastLatencyMs(null);
     setHasAppliedStyle(false);
     setShowComparison(false);
+    clearCanvasSession();
     addToast('info', 'Canvas reset');
   };
 
@@ -204,9 +290,16 @@ export function App() {
         onReset={handleReset}
         hasActiveImage={!!activeImage}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        isOnline={isOnline}
+        canInstall={canInstall}
+        onInstall={promptInstall}
       />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
+        {canInstall && (
+          <InstallPromptBanner onInstall={promptInstall} />
+        )}
+
         {!activeImage ? (
           <>
             <Hero />
