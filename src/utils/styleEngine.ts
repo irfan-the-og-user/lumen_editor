@@ -272,7 +272,7 @@ export const executeStyleTransfer = async (
   const preset = STYLE_PRESETS.find((p) => p.id === styleId);
   if (!preset) throw new Error('Unknown style preset selected.');
 
-  if (hfApiKey && hfApiKey.trim().length > 5) {
+  if (typeof navigator !== 'undefined' && navigator.onLine && hfApiKey && hfApiKey.trim().length > 5) {
     try {
       onProgress?.(`Dispatching neural style request to Hugging Face...`, 25);
       const response = await fetch('/api/style-transfer', {
