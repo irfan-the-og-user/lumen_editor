@@ -9,6 +9,7 @@ import {
   Sparkles 
 } from 'lucide-react';
 import { loadImage, calculateFitDimensions } from '../utils/canvasUtils';
+import { renderStrokesToContext } from '../utils/canvasUtils';
 import type { Point, Stroke } from '../utils/canvasUtils';
 
 interface CanvasWorkspaceProps {
@@ -120,45 +121,24 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, displayDimensions.width, displayDimensions.height);
 
-    // Draw all confirmed strokes
+    // Draw all confirmed strokes + current active stroke
     const allStrokes = [...strokes];
     if (currentStroke.length > 0) {
       allStrokes.push({
         points: currentStroke,
-        size: brushSize,
+        size: brushSize / displayDimensions.width,
         color: maskColor
       });
     }
 
-    for (const stroke of allStrokes) {
-      if (stroke.points.length === 0) continue;
-
-      ctx.fillStyle = stroke.color;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = stroke.size;
-
-      if (stroke.points.length === 1) {
-        ctx.beginPath();
-        ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
-        ctx.stroke();
-      }
-    }
+    renderStrokesToContext(ctx, allStrokes, displayDimensions.width, displayDimensions.height);
   }, [strokes, currentStroke, brushSize, maskColor, displayDimensions]);
 
   useEffect(() => {
     redrawMask();
   }, [redrawMask]);
 
-  // Helper to extract canvas relative coordinate from Mouse or Touch event
+  // Helper to extract aspect-preserved normalized coordinates [0..1] from Mouse or Touch event
   const getCanvasCoordinates = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ): Point | null => {
@@ -166,6 +146,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+
     let clientX = 0;
     let clientY = 0;
 
@@ -178,8 +160,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       clientY = e.clientY;
     }
 
-    const x = ((clientX - rect.left) / rect.width) * displayDimensions.width;
-    const y = ((clientY - rect.top) / rect.height) * displayDimensions.height;
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
 
     return { x, y };
   };
@@ -197,14 +179,16 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
 
     setIsDrawing(true);
     setCurrentStroke([pt]);
-    setCursorPos(pt);
+    setCursorPos({ x: pt.x * displayDimensions.width, y: pt.y * displayDimensions.height });
   };
 
   const handleMove = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
     const pt = getCanvasCoordinates(e);
-    if (pt) setCursorPos(pt);
+    if (pt) {
+      setCursorPos({ x: pt.x * displayDimensions.width, y: pt.y * displayDimensions.height });
+    }
 
     if (!isDrawing || !isDrawingEnabled || isProcessing) return;
     if ('touches' in e) {
@@ -222,7 +206,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     if (currentStroke.length > 0) {
       const newStroke: Stroke = {
         points: currentStroke,
-        size: brushSize,
+        size: brushSize / displayDimensions.width,
         color: maskColor
       };
       onStrokesChange([...strokes, newStroke]);

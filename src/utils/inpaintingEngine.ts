@@ -1,4 +1,4 @@
-import { loadImage } from './canvasUtils';
+import { loadImage, renderStrokesToContext, exportBinaryMaskDataUrl } from './canvasUtils';
 import type { Stroke } from './canvasUtils';
 
 export interface InpaintResult {
@@ -43,34 +43,7 @@ export const runClientSideInpainting = async (
   maskCtx.fillStyle = '#000000';
   maskCtx.fillRect(0, 0, width, height);
 
-  maskCtx.fillStyle = '#ffffff';
-  maskCtx.strokeStyle = '#ffffff';
-  maskCtx.lineCap = 'round';
-  maskCtx.lineJoin = 'round';
-
-  for (const stroke of strokes) {
-    if (stroke.points.length === 0) continue;
-    maskCtx.lineWidth = stroke.size * (width / 360); // scale brush to image width
-
-    if (stroke.points.length === 1) {
-      maskCtx.beginPath();
-      maskCtx.arc(
-        (stroke.points[0].x / 360) * width,
-        (stroke.points[0].y / 270) * height,
-        (stroke.size * (width / 360)) / 2,
-        0,
-        Math.PI * 2
-      );
-      maskCtx.fill();
-    } else {
-      maskCtx.beginPath();
-      maskCtx.moveTo((stroke.points[0].x / 360) * width, (stroke.points[0].y / 270) * height);
-      for (let i = 1; i < stroke.points.length; i++) {
-        maskCtx.lineTo((stroke.points[i].x / 360) * width, (stroke.points[i].y / 270) * height);
-      }
-      maskCtx.stroke();
-    }
-  }
+  renderStrokesToContext(maskCtx, strokes, width, height, '#ffffff');
 
   onProgress?.('Computing boundary pixel diffusion & texture synthesis...', 60);
 
@@ -177,7 +150,12 @@ export const executeInpainting = async (
   if (hfApiKey && hfApiKey.trim().length > 5) {
     try {
       onProgress?.('Preparing neural request for Hugging Face SD-Inpainting...', 20);
-      
+
+      const img = await loadImage(imageSrc);
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      const maskDataUrl = exportBinaryMaskDataUrl(strokes, width, height);
+
       const response = await fetch('/api/inpaint', {
         method: 'POST',
         headers: {
@@ -186,6 +164,7 @@ export const executeInpainting = async (
         },
         body: JSON.stringify({
           image: imageSrc,
+          mask: maskDataUrl,
           strokes
         })
       });

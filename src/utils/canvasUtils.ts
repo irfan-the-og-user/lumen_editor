@@ -50,6 +50,80 @@ export const calculateFitDimensions = (
 };
 
 /**
+ * Normalizes legacy stroke data (in display/viewport pixels) to unit vector space [0..1].
+ * Keeps aspect-preserved normalized strokes unchanged.
+ */
+export const normalizeStroke = (
+  stroke: Stroke,
+  fallbackWidth: number = 360,
+  fallbackHeight: number = 270
+): Stroke => {
+  const isLegacyPoints = stroke.points.some((p) => p.x > 1.0 || p.y > 1.0);
+  const isLegacySize = stroke.size > 1.0;
+
+  if (!isLegacyPoints && !isLegacySize) {
+    return stroke;
+  }
+
+  const normPoints = stroke.points.map((p) => ({
+    x: p.x > 1.0 ? Math.max(0, Math.min(1, p.x / fallbackWidth)) : p.x,
+    y: p.y > 1.0 ? Math.max(0, Math.min(1, p.y / fallbackHeight)) : p.y
+  }));
+
+  const normSize = isLegacySize ? stroke.size / fallbackWidth : stroke.size;
+
+  return {
+    ...stroke,
+    points: normPoints,
+    size: normSize
+  };
+};
+
+/**
+ * Renders normalized vector strokes onto any canvas context with exact aspect preservation.
+ */
+export const renderStrokesToContext = (
+  ctx: CanvasRenderingContext2D,
+  strokes: Stroke[],
+  canvasWidth: number,
+  canvasHeight: number,
+  colorOverride?: string
+): void => {
+  for (const rawStroke of strokes) {
+    const stroke = normalizeStroke(rawStroke, canvasWidth, canvasHeight);
+    if (stroke.points.length === 0) continue;
+
+    const color = colorOverride || stroke.color;
+    const lineWidth = Math.max(1, stroke.size * canvasWidth);
+
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = lineWidth;
+
+    if (stroke.points.length === 1) {
+      ctx.beginPath();
+      ctx.arc(
+        stroke.points[0].x * canvasWidth,
+        stroke.points[0].y * canvasHeight,
+        lineWidth / 2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x * canvasWidth, stroke.points[0].y * canvasHeight);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x * canvasWidth, stroke.points[i].y * canvasHeight);
+      }
+      ctx.stroke();
+    }
+  }
+};
+
+/**
  * Exports a binary mask from strokes scaled to the original image's native resolution.
  * Native inpainting models require: White (255) = Inpaint/Remove, Black (0) = Keep.
  */
@@ -57,7 +131,7 @@ export const exportBinaryMaskDataUrl = (
   strokes: Stroke[],
   nativeWidth: number,
   nativeHeight: number,
-  displayScale: number
+  _displayScale?: number
 ): string => {
   const canvas = document.createElement('canvas');
   canvas.width = nativeWidth;
@@ -70,36 +144,7 @@ export const exportBinaryMaskDataUrl = (
   ctx.fillRect(0, 0, nativeWidth, nativeHeight);
 
   // Draw each stroke scaled to native coordinates in pure white
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  const scaleFactor = 1 / displayScale;
-
-  for (const stroke of strokes) {
-    if (stroke.points.length === 0) continue;
-    ctx.lineWidth = stroke.size * scaleFactor;
-
-    if (stroke.points.length === 1) {
-      ctx.beginPath();
-      ctx.arc(
-        stroke.points[0].x * scaleFactor,
-        stroke.points[0].y * scaleFactor,
-        (stroke.size * scaleFactor) / 2,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x * scaleFactor, stroke.points[0].y * scaleFactor);
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x * scaleFactor, stroke.points[i].y * scaleFactor);
-      }
-      ctx.stroke();
-    }
-  }
+  renderStrokesToContext(ctx, strokes, nativeWidth, nativeHeight, '#ffffff');
 
   return canvas.toDataURL('image/png');
 };
