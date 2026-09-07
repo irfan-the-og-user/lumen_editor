@@ -81,7 +81,9 @@ npm run preview
 ### Optional: Hugging Face API Configuration
 For cloud-based Stable Diffusion inference, set your free Hugging Face API token:
 ```bash
-# Option A: Environment Variable
+# Option A: Environment Variable Configuration
+# Copy template and set your token
+cp .env.example .env
 export HF_TOKEN="hf_your_free_token_here"
 
 # Option B: In-App Token Setting
