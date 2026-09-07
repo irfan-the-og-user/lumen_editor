@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { loadImage, calculateFitDimensions } from '../utils/canvasUtils';
 import type { Point, Stroke } from '../utils/canvasUtils';
+import type { ImageAdjustments } from '../types';
 
 interface CanvasWorkspaceProps {
   imageUrl: string;
@@ -20,6 +21,7 @@ interface CanvasWorkspaceProps {
   isDrawingEnabled: boolean;
   maskColor?: string;
   isProcessing?: boolean;
+  adjustments?: ImageAdjustments;
 }
 
 export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
@@ -30,7 +32,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   onBrushSizeChange,
   isDrawingEnabled,
   maskColor = 'rgba(244, 63, 94, 0.45)', // High-visibility rose mask
-  isProcessing = false
+  isProcessing = false,
+  adjustments
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -102,8 +105,19 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
 
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, displayDimensions.width, displayDimensions.height);
+
+    if (adjustments) {
+      const b = adjustments.brightness;
+      const c = adjustments.contrast;
+      const s = adjustments.saturation;
+      ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+    } else {
+      ctx.filter = 'none';
+    }
+
     ctx.drawImage(nativeImage, 0, 0, displayDimensions.width, displayDimensions.height);
-  }, [nativeImage, displayDimensions]);
+    ctx.filter = 'none';
+  }, [nativeImage, displayDimensions, adjustments]);
 
   // Render strokes to mask overlay canvas
   const redrawMask = useCallback(() => {
