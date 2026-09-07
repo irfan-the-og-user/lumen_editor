@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint src",
+    "lint": "oxlint src api",
+    "audit": "npm audit --audit-level=high",
     "preview": "vite preview"
   },
   "dependencies": {
