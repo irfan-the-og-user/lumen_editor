@@ -130,6 +130,22 @@ lumen-editor/
 
 ---
 
+## 7. Security & CI/CD Pipeline
+
+Automated security checking and mandatory pull request merge gates are enforced via GitHub Actions (`.github/workflows/security.yml`):
+
+- **Secret Scanning (Gitleaks)**: Scans every pull request commit for exposed API keys, tokens, and hardcoded credentials.
+- **Static Application Security Testing (SAST)**: Runs Semgrep and Oxlint across both frontend (`src/`) and serverless API handlers (`api/`) to catch code security flaws before merging.
+- **Dependency Audit**: Audits npm package dependencies (`npm run audit`) to block pull requests containing high or critical severity vulnerabilities.
+
+To run security checks locally:
+```bash
+npm run lint    # Oxlint static check across src/ and api/
+npm run audit   # Dependency security audit
+```
+
+---
+
 ## 6. Inter IIT Deliverables Checklist
 
 - [x] **Working Prototype**: Fully operational inpainting and style transfer with dual edge/cloud pipelines.
