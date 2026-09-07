@@ -25,7 +25,7 @@ export function App() {
   const [progress, setProgress] = useState<InferenceProgress | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
-  const [lastEngineUsed, setLastEngineUsed] = useState<'huggingface' | 'edge-client' | null>(null);
+  const [lastEngineUsed, setLastEngineUsed] = useState<'huggingface' | 'edge-client' | 'async-queue' | null>(null);
   const [hfApiKey, setHfApiKey] = useState<string>('');
 
   // Style Transfer State

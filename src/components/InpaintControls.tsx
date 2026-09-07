@@ -8,7 +8,7 @@ interface InpaintControlsProps {
   isProcessing: boolean;
   progress: InferenceProgress | null;
   lastLatencyMs: number | null;
-  lastEngineUsed: 'huggingface' | 'edge-client' | null;
+  lastEngineUsed: 'huggingface' | 'edge-client' | 'async-queue' | null;
   hfApiKey: string;
   onHfApiKeyChange: (key: string) => void;
   errorMessage: string | null;
@@ -120,7 +120,12 @@ export const InpaintControls: React.FC<InpaintControlsProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-[11px]">
-            {lastEngineUsed === 'huggingface' ? (
+            {lastEngineUsed === 'async-queue' ? (
+              <>
+                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-cyan-300">Async Server Job Queue</span>
+              </>
+            ) : lastEngineUsed === 'huggingface' ? (
               <>
                 <Cloud className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="text-cyan-300">HF SD-Inpaint</span>
@@ -128,7 +133,7 @@ export const InpaintControls: React.FC<InpaintControlsProps> = ({
             ) : (
               <>
                 <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300">Edge Client Synthesizer</span>
+                <span className="text-emerald-300">Web Worker Edge Engine</span>
               </>
             )}
           </div>

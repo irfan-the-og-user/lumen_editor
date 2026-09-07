@@ -10,7 +10,7 @@ interface StyleControlsProps {
   isProcessing: boolean;
   progress: InferenceProgress | null;
   lastLatencyMs: number | null;
-  lastEngineUsed: 'huggingface' | 'edge-client' | null;
+  lastEngineUsed: 'huggingface' | 'edge-client' | 'async-queue' | null;
   hasStyledImage: boolean;
   showComparison: boolean;
   onToggleComparison: (show: boolean) => void;
@@ -171,7 +171,12 @@ export const StyleControls: React.FC<StyleControlsProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-[11px]">
-            {lastEngineUsed === 'huggingface' ? (
+            {lastEngineUsed === 'async-queue' ? (
+              <>
+                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-cyan-300">Async Server Job Queue</span>
+              </>
+            ) : lastEngineUsed === 'huggingface' ? (
               <>
                 <Cloud className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="text-cyan-300">HF Instruct-Pix2Pix</span>
@@ -179,7 +184,7 @@ export const StyleControls: React.FC<StyleControlsProps> = ({
             ) : (
               <>
                 <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300">Edge Neural Shader</span>
+                <span className="text-emerald-300">Web Worker Edge Engine</span>
               </>
             )}
           </div>
