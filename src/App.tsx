@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { UploadDropzone } from './components/UploadDropzone';
@@ -8,10 +8,12 @@ import { InpaintControls } from './components/InpaintControls';
 import { StyleControls } from './components/StyleControls';
 import { ComparisonSlider } from './components/ComparisonSlider';
 import { ArchitectureModal } from './components/ArchitectureModal';
+import { AuthModal } from './components/AuthModal';
 import { Toast, type ToastMessage } from './components/Toast';
 import { executeInpainting } from './utils/inpaintingEngine';
 import { executeStyleTransfer } from './utils/styleEngine';
-import type { EditorMode, EditHistoryItem, InferenceProgress } from './types';
+import { loadSession, saveSession, clearSession } from './utils/sessionStorage';
+import type { EditorMode, EditHistoryItem, InferenceProgress, User, PendingAction } from './types';
 import type { Stroke } from './utils/canvasUtils';
 
 export function App() {
@@ -33,24 +35,98 @@ export function App() {
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [hasAppliedStyle, setHasAppliedStyle] = useState<boolean>(false);
 
+  // Auth & Deferred Action State
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('lumen_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+
   // Modals and Toasts
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const addToast = (type: 'success' | 'error' | 'info', text: string) => {
+  const addToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     const newToast: ToastMessage = {
       id: `toast-${Date.now()}-${Math.random()}`,
       type,
       text
     };
     setToasts((prev) => [...prev, newToast]);
-  };
+  }, []);
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // 1. Session Recovery on Launch
+  useEffect(() => {
+    let isMounted = true;
+    loadSession().then((restored) => {
+      if (!isMounted || !restored) return;
+      setActiveImage(restored.activeImage);
+      setInitialBaseImage(restored.initialBaseImage);
+      setMode(restored.mode);
+      setStrokes(restored.strokes);
+      setBrushSize(restored.brushSize);
+      setHistory(restored.history);
+      setSelectedStyleId(restored.selectedStyleId);
+      setHasAppliedStyle(restored.hasAppliedStyle);
+      setShowComparison(restored.showComparison);
+      setLastLatencyMs(restored.lastLatencyMs);
+      setLastEngineUsed(restored.lastEngineUsed);
+      addToast('info', 'Restored active canvas session from IndexedDB');
+    }).catch((err) => {
+      console.error('Session load error:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [addToast]);
+
+  // 2. Auto-persist Canvas State on Changes
+  useEffect(() => {
+    if (!activeImage) return;
+
+    const timer = setTimeout(() => {
+      saveSession({
+        activeImage,
+        initialBaseImage,
+        mode,
+        strokes,
+        brushSize,
+        history,
+        selectedStyleId,
+        hasAppliedStyle,
+        showComparison,
+        lastLatencyMs,
+        lastEngineUsed
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [
+    activeImage,
+    initialBaseImage,
+    mode,
+    strokes,
+    brushSize,
+    history,
+    selectedStyleId,
+    hasAppliedStyle,
+    showComparison,
+    lastLatencyMs,
+    lastEngineUsed
+  ]);
+
   const handleImageSelect = (fileOrUrl: File | string) => {
+    clearSession();
     if (typeof fileOrUrl === 'string') {
       setActiveImage(fileOrUrl);
       setInitialBaseImage(fileOrUrl);
@@ -76,6 +152,7 @@ export function App() {
   };
 
   const handleReset = () => {
+    clearSession();
     setActiveImage(null);
     setInitialBaseImage(null);
     setStrokes([]);
@@ -100,7 +177,7 @@ export function App() {
     }
   };
 
-  const handleExport = () => {
+  const executeExport = useCallback(() => {
     if (!activeImage) return;
     const a = document.createElement('a');
     a.href = activeImage;
@@ -109,6 +186,44 @@ export function App() {
     a.click();
     document.body.removeChild(a);
     addToast('success', 'HD Image exported to downloads');
+  }, [activeImage, addToast]);
+
+  const handleExport = () => {
+    if (!activeImage) return;
+    if (!user) {
+      setPendingAction('export');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    executeExport();
+  };
+
+  const handleAuthSuccess = (newUser: User) => {
+    setUser(newUser);
+    try {
+      localStorage.setItem('lumen_user', JSON.stringify(newUser));
+    } catch (err) {
+      console.error('Failed to store user in localStorage:', err);
+    }
+    setIsAuthModalOpen(false);
+    addToast('success', `Welcome, ${newUser.name}! Account registered.`);
+
+    const currentPendingAction = pendingAction;
+    setPendingAction(null);
+
+    if (currentPendingAction === 'export') {
+      setTimeout(() => {
+        executeExport();
+      }, 100);
+    }
+  };
+
+  const handleSignOut = () => {
+    setUser(null);
+    try {
+      localStorage.removeItem('lumen_user');
+    } catch {}
+    addToast('info', 'Signed out from session');
   };
 
   // Feature 1: Object Removal Action
@@ -204,6 +319,12 @@ export function App() {
         onReset={handleReset}
         hasActiveImage={!!activeImage}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        user={user}
+        onOpenAuthModal={() => {
+          setPendingAction(null);
+          setIsAuthModalOpen(true);
+        }}
+        onSignOut={handleSignOut}
       />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
@@ -286,6 +407,17 @@ export function App() {
       <ArchitectureModal
         isOpen={isArchitectureOpen}
         onClose={() => setIsArchitectureOpen(false)}
+      />
+
+      {/* Action-Gated Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={handleAuthSuccess}
+        pendingAction={pendingAction}
       />
 
       {/* Toast Feedback System */}

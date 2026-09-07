@@ -1,13 +1,24 @@
 import React from 'react';
-import { Sparkles, Cpu, Layers, BookOpen } from 'lucide-react';
+import { Sparkles, Cpu, Layers, BookOpen, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
+import type { User } from '../types';
 
 interface NavbarProps {
   onReset?: () => void;
   hasActiveImage?: boolean;
   onOpenArchitecture: () => void;
+  user: User | null;
+  onOpenAuthModal: () => void;
+  onSignOut: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenArchitecture }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onReset,
+  hasActiveImage,
+  onOpenArchitecture,
+  user,
+  onOpenAuthModal,
+  onSignOut
+}) => {
   return (
     <header className="w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -30,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
           </div>
         </div>
 
-        {/* Telemetry & Architecture Badges */}
+        {/* Telemetry, Architecture Badges & User Auth State */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900/90 border border-zinc-800 text-[11px] font-mono text-zinc-400">
             <Cpu className="w-3.5 h-3.5 text-emerald-400" />
@@ -55,7 +66,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
             </button>
           )}
 
-          <div className="px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-medium">
+          {/* User Auth Status Badge / Control */}
+          {user ? (
+            <div className="flex items-center gap-1.5 bg-zinc-900/90 border border-emerald-500/30 p-1 pl-2.5 rounded-full text-xs font-medium text-emerald-400">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span className="truncate max-w-[100px] text-zinc-200">{user.name}</span>
+              <button
+                onClick={onSignOut}
+                className="p-1 text-zinc-400 hover:text-rose-400 rounded-full hover:bg-zinc-800 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuthModal}
+              className="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold cursor-pointer"
+            >
+              <UserIcon className="w-3.5 h-3.5" />
+              <span>Guest Session</span>
+            </button>
+          )}
+
+          <div className="hidden lg:block px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-mono text-emerald-400 font-medium">
             Inter IIT 14.0
           </div>
         </div>
@@ -63,3 +97,4 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset, hasActiveImage, onOpenA
     </header>
   );
 };
+
