@@ -1,5 +1,6 @@
 import { loadImage } from './canvasUtils';
 import type { Stroke } from './canvasUtils';
+import type { ColorSpace } from '../types';
 
 export interface InpaintResult {
   resultDataUrl: string;
@@ -14,7 +15,8 @@ export interface InpaintResult {
 export const runClientSideInpainting = async (
   imageSrc: string,
   strokes: Stroke[],
-  onProgress?: (step: string, percentage: number) => void
+  onProgress?: (step: string, percentage: number) => void,
+  colorSpace: ColorSpace = 'srgb'
 ): Promise<string> => {
   onProgress?.('Initializing edge neural patch synthesizer...', 15);
   const img = await loadImage(imageSrc);
@@ -26,7 +28,7 @@ export const runClientSideInpainting = async (
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const ctx = canvas.getContext('2d', { willReadFrequently: true, colorSpace }) as CanvasRenderingContext2D | null;
   if (!ctx) throw new Error('Could not create 2D canvas context');
 
   // Draw source image
@@ -165,7 +167,8 @@ export const executeInpainting = async (
   imageSrc: string,
   strokes: Stroke[],
   hfApiKey?: string,
-  onProgress?: (step: string, percentage: number) => void
+  onProgress?: (step: string, percentage: number) => void,
+  colorSpace: ColorSpace = 'srgb'
 ): Promise<InpaintResult> => {
   const startTime = performance.now();
 
@@ -208,7 +211,7 @@ export const executeInpainting = async (
   }
 
   // Run client-side zero-latency neural patch diffusion
-  const resultDataUrl = await runClientSideInpainting(imageSrc, strokes, onProgress);
+  const resultDataUrl = await runClientSideInpainting(imageSrc, strokes, onProgress, colorSpace);
   return {
     resultDataUrl,
     engineUsed: 'edge-client',

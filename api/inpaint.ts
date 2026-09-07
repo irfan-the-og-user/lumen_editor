@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { image, mask, prompt = 'high quality background texture, seamless inpaint' } = req.body;
+    const { image, mask, prompt = 'high quality background texture, seamless inpaint', iccProfile } = req.body;
 
     if (!image) {
       return res.status(400).json({ error: 'Missing base image' });

@@ -6,10 +6,12 @@ import {
   ZoomOut, 
   Maximize2, 
   Sliders, 
-  Sparkles 
+  Sparkles,
+  Palette
 } from 'lucide-react';
 import { loadImage, calculateFitDimensions } from '../utils/canvasUtils';
 import type { Point, Stroke } from '../utils/canvasUtils';
+import type { ColorSpace } from '../types';
 
 interface CanvasWorkspaceProps {
   imageUrl: string;
@@ -20,6 +22,7 @@ interface CanvasWorkspaceProps {
   isDrawingEnabled: boolean;
   maskColor?: string;
   isProcessing?: boolean;
+  colorSpace?: ColorSpace;
 }
 
 export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
@@ -30,7 +33,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   onBrushSizeChange,
   isDrawingEnabled,
   maskColor = 'rgba(244, 63, 94, 0.45)', // High-visibility rose mask
-  isProcessing = false
+  isProcessing = false,
+  colorSpace = 'srgb'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -97,13 +101,13 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     canvas.width = displayDimensions.width * dpr;
     canvas.height = displayDimensions.height * dpr;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = (canvas.getContext('2d', { colorSpace }) || canvas.getContext('2d')) as CanvasRenderingContext2D | null;
     if (!ctx) return;
 
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, displayDimensions.width, displayDimensions.height);
     ctx.drawImage(nativeImage, 0, 0, displayDimensions.width, displayDimensions.height);
-  }, [nativeImage, displayDimensions]);
+  }, [nativeImage, displayDimensions, colorSpace]);
 
   // Render strokes to mask overlay canvas
   const redrawMask = useCallback(() => {
@@ -262,6 +266,14 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
             <span className="font-mono text-zinc-400 w-8">{brushSize}px</span>
           </div>
         )}
+
+        {/* Color Space Indicator */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-mono">
+          <Palette className={`w-3.5 h-3.5 ${colorSpace === 'display-p3' ? 'text-purple-400' : 'text-zinc-400'}`} />
+          <span className={colorSpace === 'display-p3' ? 'text-purple-300 font-semibold' : 'text-zinc-400'}>
+            {colorSpace === 'display-p3' ? 'Display P3 Wide Gamut' : 'sRGB Color Pipeline'}
+          </span>
+        </div>
 
         {/* Action Controls: Undo, Clear, Zoom */}
         <div className="flex items-center gap-1.5 ml-auto">

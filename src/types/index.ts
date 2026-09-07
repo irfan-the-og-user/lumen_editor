@@ -1,4 +1,12 @@
 export type EditorMode = 'idle' | 'inpaint' | 'style';
+export type ColorSpace = 'srgb' | 'display-p3';
+
+export interface ICCProfileData {
+  rawBytes: Uint8Array;
+  profileName?: string;
+  colorSpace: ColorSpace;
+  isDisplayP3: boolean;
+}
 
 export interface StylePreset {
   id: string;

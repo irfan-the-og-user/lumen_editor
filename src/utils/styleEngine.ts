@@ -1,5 +1,6 @@
 import { loadImage } from './canvasUtils';
-import type { StylePreset } from '../types';
+import { getLuminanceCoefficients } from './iccUtils';
+import type { StylePreset, ColorSpace } from '../types';
 
 export const STYLE_PRESETS: StylePreset[] = [
   {
@@ -139,7 +140,8 @@ const applyKuwaharaFilter = (
 export const runClientSideStyleTransfer = async (
   imageSrc: string,
   styleId: string,
-  onProgress?: (step: string, percentage: number) => void
+  onProgress?: (step: string, percentage: number) => void,
+  colorSpace: ColorSpace = 'srgb'
 ): Promise<string> => {
   onProgress?.('Decoding source image tensors...', 15);
   const img = await loadImage(imageSrc);
@@ -150,7 +152,7 @@ export const runClientSideStyleTransfer = async (
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const ctx = canvas.getContext('2d', { willReadFrequently: true, colorSpace }) as CanvasRenderingContext2D | null;
   if (!ctx) throw new Error('Failed to create canvas 2D context');
 
   ctx.drawImage(img, 0, 0, width, height);
@@ -158,6 +160,7 @@ export const runClientSideStyleTransfer = async (
   onProgress?.('Applying neural style color manifold & tensor mapping...', 45);
   const imgData = ctx.getImageData(0, 0, width, height);
   const data = imgData.data;
+  const lumaCoeffs = getLuminanceCoefficients(colorSpace);
 
   // Apply style-specific transformation algorithms
   if (styleId === 'cyberpunk') {
@@ -165,7 +168,7 @@ export const runClientSideStyleTransfer = async (
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      const lum = lumaCoeffs.r * r + lumaCoeffs.g * g + lumaCoeffs.b * b;
 
       data[i] = Math.min(255, lum < 128 ? r * 0.4 : r * 1.4 + 40);
       data[i + 1] = Math.min(255, lum < 128 ? g * 1.3 + 30 : g * 0.7);
@@ -176,7 +179,7 @@ export const runClientSideStyleTransfer = async (
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
-      let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      let lum = lumaCoeffs.r * r + lumaCoeffs.g * g + lumaCoeffs.b * b;
       lum = Math.pow(lum / 255, 1.4) * 255 * 1.15;
       const grain = (Math.random() - 0.5) * 8;
       const finalVal = Math.min(255, Math.max(0, lum + grain));
@@ -265,7 +268,8 @@ export const executeStyleTransfer = async (
   imageSrc: string,
   styleId: string,
   hfApiKey?: string,
-  onProgress?: (step: string, percentage: number) => void
+  onProgress?: (step: string, percentage: number) => void,
+  colorSpace: ColorSpace = 'srgb'
 ): Promise<StyleTransferResult> => {
   const startTime = performance.now();
 
@@ -304,7 +308,7 @@ export const executeStyleTransfer = async (
     }
   }
 
-  const resultDataUrl = await runClientSideStyleTransfer(imageSrc, styleId, onProgress);
+  const resultDataUrl = await runClientSideStyleTransfer(imageSrc, styleId, onProgress, colorSpace);
   return {
     resultDataUrl,
     engineUsed: 'edge-client',
