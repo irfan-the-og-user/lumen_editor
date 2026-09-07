@@ -11,6 +11,7 @@ import { ArchitectureModal } from './components/ArchitectureModal';
 import { Toast, type ToastMessage } from './components/Toast';
 import { executeInpainting } from './utils/inpaintingEngine';
 import { executeStyleTransfer } from './utils/styleEngine';
+import { useDeltaSync } from './hooks/useDeltaSync';
 import type { EditorMode, EditHistoryItem, InferenceProgress } from './types';
 import type { Stroke } from './utils/canvasUtils';
 
@@ -45,6 +46,13 @@ export function App() {
     };
     setToasts((prev) => [...prev, newToast]);
   };
+
+  const deltaSync = useDeltaSync({
+    documentId: 'canvas_main',
+    strokes,
+    onStrokesChange: setStrokes,
+    addToast,
+  });
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -245,6 +253,15 @@ export function App() {
                 onBrushSizeChange={setBrushSize}
                 isDrawingEnabled={mode === 'inpaint'}
                 isProcessing={isProcessing}
+                onStrokeAdded={deltaSync.recordAddStroke}
+                onStrokeRemoved={deltaSync.recordRemoveStroke}
+                onStrokesCleared={deltaSync.recordClearStrokes}
+                syncState={deltaSync.syncState}
+                clientVersion={deltaSync.clientVersion}
+                lastPayloadSize={deltaSync.lastPayloadSize}
+                lastLockDurationMs={deltaSync.lastLockDurationMs}
+                pendingCount={deltaSync.pendingCount}
+                onManualSync={deltaSync.forceSync}
               />
             )}
 

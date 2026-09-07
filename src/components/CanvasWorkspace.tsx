@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { loadImage, calculateFitDimensions } from '../utils/canvasUtils';
 import type { Point, Stroke } from '../utils/canvasUtils';
+import { AutoSaveIndicator } from './AutoSaveIndicator';
+import type { SyncState } from '../types/sync';
 
 interface CanvasWorkspaceProps {
   imageUrl: string;
@@ -20,6 +22,15 @@ interface CanvasWorkspaceProps {
   isDrawingEnabled: boolean;
   maskColor?: string;
   isProcessing?: boolean;
+  onStrokeAdded?: (stroke: Stroke) => void;
+  onStrokeRemoved?: (strokeId?: string) => void;
+  onStrokesCleared?: () => void;
+  syncState?: SyncState;
+  clientVersion?: number;
+  lastPayloadSize?: number;
+  lastLockDurationMs?: number;
+  pendingCount?: number;
+  onManualSync?: () => void;
 }
 
 export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
@@ -30,7 +41,16 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   onBrushSizeChange,
   isDrawingEnabled,
   maskColor = 'rgba(244, 63, 94, 0.45)', // High-visibility rose mask
-  isProcessing = false
+  isProcessing = false,
+  onStrokeAdded,
+  onStrokeRemoved,
+  onStrokesCleared,
+  syncState,
+  clientVersion = 0,
+  lastPayloadSize,
+  lastLockDurationMs,
+  pendingCount = 0,
+  onManualSync,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -226,25 +246,47 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
         color: maskColor
       };
       onStrokesChange([...strokes, newStroke]);
+      if (onStrokeAdded) {
+        onStrokeAdded(newStroke);
+      }
     }
     setCurrentStroke([]);
   };
 
   const handleUndo = () => {
     if (strokes.length > 0) {
+      const lastStroke = strokes[strokes.length - 1];
       onStrokesChange(strokes.slice(0, -1));
+      if (onStrokeRemoved) {
+        onStrokeRemoved((lastStroke as any)?.id);
+      }
     }
   };
 
   const handleClear = () => {
     onStrokesChange([]);
     setCurrentStroke([]);
+    if (onStrokesCleared) {
+      onStrokesCleared();
+    }
   };
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
-      {/* Top Workspace Toolbar: Brush Controls & Zoom */}
+      {/* Top Workspace Toolbar: Brush Controls, AutoSave & Zoom */}
       <div className="w-full max-w-3xl glass-pill px-4 py-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* AutoSave Indicator */}
+        {syncState && (
+          <AutoSaveIndicator
+            syncState={syncState}
+            clientVersion={clientVersion}
+            lastPayloadSize={lastPayloadSize}
+            lastLockDurationMs={lastLockDurationMs}
+            pendingCount={pendingCount}
+            onManualSync={onManualSync}
+          />
+        )}
+
         {/* Brush Size Adjustment */}
         {isDrawingEnabled && (
           <div className="flex items-center gap-2.5">
