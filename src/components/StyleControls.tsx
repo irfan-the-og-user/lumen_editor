@@ -1,6 +1,7 @@
 import React from 'react';
 import { Wand2, Sparkles, Check, CheckCircle2, Cpu, Cloud, Layers } from 'lucide-react';
 import { STYLE_PRESETS } from '../utils/styleEngine';
+import { getProgressClass } from '../utils/dynamicStyleManager';
 import type { StylePreset, InferenceProgress } from '../types';
 
 interface StyleControlsProps {
@@ -91,8 +92,7 @@ export const StyleControls: React.FC<StyleControlsProps> = ({
                 {/* Visual Style swatch badge */}
                 <div className="flex items-center justify-between">
                   <div
-                    className="w-7 h-7 rounded-lg border border-white/20 shadow-inner flex items-center justify-center"
-                    style={{ background: preset.previewUrl }}
+                    className={`w-7 h-7 rounded-lg border border-white/20 shadow-inner flex items-center justify-center preset-bg-${preset.id}`}
                   >
                     {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
                   </div>
@@ -149,8 +149,7 @@ export const StyleControls: React.FC<StyleControlsProps> = ({
 
           <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-300 ease-out"
-              style={{ width: `${progress.percentage}%` }}
+              className={`h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-300 ease-out ${getProgressClass(progress.percentage)}`}
             />
           </div>
 
