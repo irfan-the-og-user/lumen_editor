@@ -1,6 +1,6 @@
 import React from 'react';
 import { Wand2, Sparkles, Check, CheckCircle2, Cpu, Cloud, Layers } from 'lucide-react';
-import { STYLE_PRESETS } from '../utils/styleEngine';
+import { STYLE_PRESETS } from '../data/stylePresets';
 import type { StylePreset, InferenceProgress } from '../types';
 
 interface StyleControlsProps {

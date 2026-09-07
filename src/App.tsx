@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { UploadDropzone } from './components/UploadDropzone';
@@ -9,8 +9,7 @@ import { StyleControls } from './components/StyleControls';
 import { ComparisonSlider } from './components/ComparisonSlider';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { Toast, type ToastMessage } from './components/Toast';
-import { executeInpainting } from './utils/inpaintingEngine';
-import { executeStyleTransfer } from './utils/styleEngine';
+import { startIdlePrefetching, cleanupIdlePrefetching } from './utils/idlePrefetcher';
 import type { EditorMode, EditHistoryItem, InferenceProgress } from './types';
 import type { Stroke } from './utils/canvasUtils';
 
@@ -36,6 +35,14 @@ export function App() {
   // Modals and Toasts
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Start idle module prefetching after UI mounts
+  useEffect(() => {
+    startIdlePrefetching();
+    return () => {
+      cleanupIdlePrefetching();
+    };
+  }, []);
 
   const addToast = (type: 'success' | 'error' | 'info', text: string) => {
     const newToast: ToastMessage = {
@@ -131,6 +138,7 @@ export function App() {
         imageBlobUrl: activeImage
       };
 
+      const { executeInpainting } = await import('./utils/inpaintingEngine');
       const result = await executeInpainting(
         activeImage,
         strokes,
@@ -172,6 +180,7 @@ export function App() {
         imageBlobUrl: activeImage
       };
 
+      const { executeStyleTransfer } = await import('./utils/styleEngine');
       const result = await executeStyleTransfer(
         activeImage,
         selectedStyleId,
