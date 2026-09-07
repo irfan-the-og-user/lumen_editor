@@ -119,18 +119,37 @@ lumen-editor/
 │   ├── App.tsx                    # Core state machine & layout orchestration
 │   ├── index.css                  # Tailwind v4 theme tokens & glassmorphism utilities
 │   └── main.tsx                   # React root entry point
+├── CONTRIBUTING.md             # Guidelines for open-source contributions & PR standards
 ├── DESIGN.md                  # Strict design tokens & anti-slop rules
-├── MARKET_RESEARCH.md         # 200-word competitive analysis & market note
 ├── DEMO_SCRIPT.md             # 75-second step-by-step video walkthrough script
-├── WIREFRAMES.md              # ASCII diagrams & mobile UX layout schemas
 ├── KNOWN_ISSUES.md            # Non-blocking items & v2.0 roadmap
+├── MARKET_RESEARCH.md         # 200-word competitive analysis & market note
+├── SECURITY.md                # Formal vulnerability policy, disclosure SLAs, and reporting contacts
+├── WIREFRAMES.md              # ASCII diagrams & mobile UX layout schemas
 ├── vercel.json                # Vercel static & serverless deployment config
 └── package.json               # Dependencies and build scripts
 ```
 
 ---
 
-## 6. Inter IIT Deliverables Checklist
+## 6. Security Governance & Vulnerability Reporting
+
+Lumen AI is committed to maintaining high security standards and protecting user privacy across edge and cloud pipelines.
+
+### Reporting Security Vulnerabilities
+- **Private Reporting Contact**: Submit vulnerability details to `security@lumen-editor.org` (or via private GitHub vulnerability reporting).
+- **DO NOT** create public GitHub issues or pull requests for security flaws.
+- **SLA Response Windows**:
+  - **Initial Acknowledgment**: Guaranteed within **48 hours** of report receipt.
+  - **Triage & Assessment**: Completed within **3 business days**.
+  - **Remediation**: Patches released within **7 days** (Critical), **14 days** (High), or **30 days** (Medium/Low).
+
+For detailed reporting procedures, safe harbor terms, and patch SLAs, please read our formal [`SECURITY.md`](./SECURITY.md).  
+For community participation rules and pull request standards, refer to [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+---
+
+## 7. Inter IIT Deliverables Checklist
 
 - [x] **Working Prototype**: Fully operational inpainting and style transfer with dual edge/cloud pipelines.
 - [x] **Mobile-First Validation**: Tested down to 375px viewport with zero horizontal overflow and 44px touch targets.
