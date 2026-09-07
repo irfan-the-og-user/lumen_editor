@@ -96,7 +96,7 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({ onImageSelect })
           <span className="text-[11px] font-mono text-zinc-500">Zero network needed</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {SAMPLE_IMAGES.map((sample: SampleImage) => (
             <div
               key={sample.id}

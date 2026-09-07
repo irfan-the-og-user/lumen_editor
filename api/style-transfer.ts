@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { image, stylePrompt } = req.body;
+    const { image, stylePrompt, iccProfile } = req.body;
 
     if (!image) {
       return res.status(400).json({ error: 'Missing source image' });

@@ -11,7 +11,8 @@ import { ArchitectureModal } from './components/ArchitectureModal';
 import { Toast, type ToastMessage } from './components/Toast';
 import { executeInpainting } from './utils/inpaintingEngine';
 import { executeStyleTransfer } from './utils/styleEngine';
-import type { EditorMode, EditHistoryItem, InferenceProgress } from './types';
+import { extractICCProfile, injectICCProfile, DEFAULT_DISPLAY_P3_ICC } from './utils/iccUtils';
+import type { EditorMode, EditHistoryItem, InferenceProgress, ColorSpace, ICCProfileData } from './types';
 import type { Stroke } from './utils/canvasUtils';
 
 export function App() {
@@ -27,6 +28,10 @@ export function App() {
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [lastEngineUsed, setLastEngineUsed] = useState<'huggingface' | 'edge-client' | null>(null);
   const [hfApiKey, setHfApiKey] = useState<string>('');
+
+  // Adaptive Color Space & ICC Metadata State
+  const [colorSpace, setColorSpace] = useState<ColorSpace>('srgb');
+  const [iccProfile, setIccProfile] = useState<ICCProfileData | null>(null);
 
   // Style Transfer State
   const [selectedStyleId, setSelectedStyleId] = useState<string>('cyberpunk');
@@ -50,28 +55,85 @@ export function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleImageSelect = (fileOrUrl: File | string) => {
+  const handleImageSelect = async (fileOrUrl: File | string) => {
+    setHistory([]);
+    setStrokes([]);
+    setErrorMessage(null);
+    setLastLatencyMs(null);
+    setHasAppliedStyle(false);
+    setShowComparison(false);
+
     if (typeof fileOrUrl === 'string') {
       setActiveImage(fileOrUrl);
       setInitialBaseImage(fileOrUrl);
-      setHistory([]);
-      setStrokes([]);
-      setErrorMessage(null);
-      setLastLatencyMs(null);
-      setHasAppliedStyle(false);
-      setShowComparison(false);
       addToast('success', 'Image loaded to canvas');
+
+      try {
+        const res = await fetch(fileOrUrl);
+        const ab = await res.arrayBuffer();
+        const extracted = extractICCProfile(ab);
+        if (extracted) {
+          setIccProfile(extracted);
+          setColorSpace(extracted.colorSpace);
+          if (extracted.isDisplayP3) {
+            addToast('info', 'Display P3 Wide Gamut profile extracted');
+          }
+        } else if (fileOrUrl.toLowerCase().includes('p3') || fileOrUrl.toLowerCase().includes('display')) {
+          const p3Profile: ICCProfileData = {
+            rawBytes: DEFAULT_DISPLAY_P3_ICC,
+            profileName: 'Display P3',
+            colorSpace: 'display-p3',
+            isDisplayP3: true
+          };
+          setIccProfile(p3Profile);
+          setColorSpace('display-p3');
+          addToast('info', 'Display P3 Wide Gamut workspace initialized');
+        } else {
+          setIccProfile(null);
+          setColorSpace('srgb');
+        }
+      } catch (err) {
+        console.warn('Could not parse ICC profile from URL:', err);
+        setIccProfile(null);
+        setColorSpace('srgb');
+      }
     } else {
       const url = URL.createObjectURL(fileOrUrl);
       setActiveImage(url);
       setInitialBaseImage(url);
-      setHistory([]);
-      setStrokes([]);
-      setErrorMessage(null);
-      setLastLatencyMs(null);
-      setHasAppliedStyle(false);
-      setShowComparison(false);
       addToast('success', 'Image uploaded successfully');
+
+      try {
+        const ab = await fileOrUrl.arrayBuffer();
+        const extracted = extractICCProfile(ab);
+        if (extracted) {
+          setIccProfile(extracted);
+          setColorSpace(extracted.colorSpace);
+          if (extracted.isDisplayP3) {
+            addToast('info', 'Display P3 Wide Gamut profile extracted from upload');
+          }
+        } else {
+          const isP3Name = fileOrUrl.name.toLowerCase().includes('p3') || fileOrUrl.name.toLowerCase().includes('display');
+          if (isP3Name) {
+            const p3Profile: ICCProfileData = {
+              rawBytes: DEFAULT_DISPLAY_P3_ICC,
+              profileName: 'Display P3',
+              colorSpace: 'display-p3',
+              isDisplayP3: true
+            };
+            setIccProfile(p3Profile);
+            setColorSpace('display-p3');
+            addToast('info', 'Display P3 Wide Gamut workspace initialized');
+          } else {
+            setIccProfile(null);
+            setColorSpace('srgb');
+          }
+        }
+      } catch (err) {
+        console.warn('Could not extract ICC profile from File:', err);
+        setIccProfile(null);
+        setColorSpace('srgb');
+      }
     }
   };
 
@@ -85,6 +147,8 @@ export function App() {
     setLastLatencyMs(null);
     setHasAppliedStyle(false);
     setShowComparison(false);
+    setIccProfile(null);
+    setColorSpace('srgb');
     addToast('info', 'Canvas reset');
   };
 
@@ -100,15 +164,61 @@ export function App() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async (format: 'png' | 'jpeg' = 'png') => {
     if (!activeImage) return;
-    const a = document.createElement('a');
-    a.href = activeImage;
-    a.download = `lumen-edit-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    addToast('success', 'HD Image exported to downloads');
+
+    const exportStartTime = performance.now();
+
+    try {
+      const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+      let rawBuffer: Uint8Array;
+
+      if (activeImage.startsWith('data:')) {
+        const parts = activeImage.split(',');
+        const bstr = atob(parts[1]);
+        rawBuffer = new Uint8Array(bstr.length);
+        for (let i = 0; i < bstr.length; i++) {
+          rawBuffer[i] = bstr.charCodeAt(i);
+        }
+      } else {
+        const res = await fetch(activeImage);
+        const ab = await res.arrayBuffer();
+        rawBuffer = new Uint8Array(ab);
+      }
+
+      const profileToInject = iccProfile?.rawBytes || (colorSpace === 'display-p3' ? DEFAULT_DISPLAY_P3_ICC : null);
+
+      let finalBytes = rawBuffer;
+      if (profileToInject) {
+        finalBytes = injectICCProfile(
+          rawBuffer,
+          mimeType,
+          profileToInject,
+          iccProfile?.profileName || 'Display P3'
+        );
+      }
+
+      const latency = Math.round(performance.now() - exportStartTime);
+
+      const blob = new Blob([finalBytes as unknown as BlobPart], { type: mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `lumen-edit-${Date.now()}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+
+      if (profileToInject) {
+        addToast('success', `HD Image exported with preserved ${colorSpace === 'display-p3' ? 'Display P3' : 'ICC'} profile (${latency}ms)`);
+      } else {
+        addToast('success', `HD Image exported (${latency}ms)`);
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      addToast('error', 'Failed to export image.');
+    }
   };
 
   // Feature 1: Object Removal Action
@@ -137,11 +247,27 @@ export function App() {
         hfApiKey,
         (step, percentage) => {
           setProgress({ step, percentage, subtext: 'Synthesizing edge texture' });
-        }
+        },
+        colorSpace
       );
 
+      // Re-associate ICC profile metadata if cloud pipeline returned fresh image raster
+      let resultRaster = result.resultDataUrl;
+      const profileToInject = iccProfile?.rawBytes || (colorSpace === 'display-p3' ? DEFAULT_DISPLAY_P3_ICC : null);
+      if (profileToInject && result.engineUsed === 'huggingface') {
+        try {
+          const res = await fetch(result.resultDataUrl);
+          const ab = await res.arrayBuffer();
+          const injected = injectICCProfile(new Uint8Array(ab), 'image/png', profileToInject, iccProfile?.profileName || 'Display P3');
+          const blob = new Blob([injected as unknown as BlobPart], { type: 'image/png' });
+          resultRaster = URL.createObjectURL(blob);
+        } catch (e) {
+          console.warn('Could not re-associate ICC profile with cloud output:', e);
+        }
+      }
+
       setHistory((prev) => [...prev, historyItem]);
-      setActiveImage(result.resultDataUrl);
+      setActiveImage(resultRaster);
       setStrokes([]);
       setLastLatencyMs(result.latencyMs);
       setLastEngineUsed(result.engineUsed);
@@ -178,11 +304,27 @@ export function App() {
         hfApiKey,
         (step, percentage) => {
           setProgress({ step, percentage, subtext: 'Applying style shader' });
-        }
+        },
+        colorSpace
       );
 
+      // Re-associate ICC profile metadata if cloud pipeline returned fresh image raster
+      let resultRaster = result.resultDataUrl;
+      const profileToInject = iccProfile?.rawBytes || (colorSpace === 'display-p3' ? DEFAULT_DISPLAY_P3_ICC : null);
+      if (profileToInject && result.engineUsed === 'huggingface') {
+        try {
+          const res = await fetch(result.resultDataUrl);
+          const ab = await res.arrayBuffer();
+          const injected = injectICCProfile(new Uint8Array(ab), 'image/png', profileToInject, iccProfile?.profileName || 'Display P3');
+          const blob = new Blob([injected as unknown as BlobPart], { type: 'image/png' });
+          resultRaster = URL.createObjectURL(blob);
+        } catch (e) {
+          console.warn('Could not re-associate ICC profile with cloud output:', e);
+        }
+      }
+
       setHistory((prev) => [...prev, historyItem]);
-      setActiveImage(result.resultDataUrl);
+      setActiveImage(resultRaster);
       setHasAppliedStyle(true);
       setShowComparison(true);
       setLastLatencyMs(result.latencyMs);
@@ -245,6 +387,7 @@ export function App() {
                 onBrushSizeChange={setBrushSize}
                 isDrawingEnabled={mode === 'inpaint'}
                 isProcessing={isProcessing}
+                colorSpace={colorSpace}
               />
             )}
 

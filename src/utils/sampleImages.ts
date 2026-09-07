@@ -86,5 +86,21 @@ export const SAMPLE_IMAGES: SampleImage[] = [
        <rect x="580" y="340" width="80" height="120" fill="#0369a1" opacity="0.9"/>
        <rect x="700" y="320" width="80" height="120" fill="#0369a1" opacity="0.9"/>`
     )
+  },
+  {
+    id: 'sample-p3-sunset',
+    name: 'Display P3 Wide Gamut Sunset',
+    category: 'Display P3 Wide Gamut',
+    recommendedMode: 'style',
+    url: createSampleSvg(
+      'Display P3 Sunset',
+      `<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ea580c"/>
+        <stop offset="50%" stop-color="#dc2626"/>
+        <stop offset="100%" stop-color="#7e22ce"/>
+      </linearGradient>`,
+      `<circle cx="512" cy="384" r="180" fill="#facc15" opacity="0.9"/>
+       <path d="M0,500 C300,420 700,580 1024,480 L1024,768 L0,768 Z" fill="#451a03"/>`
+    )
   }
 ];
